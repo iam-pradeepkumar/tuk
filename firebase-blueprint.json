@@ -1,0 +1,189 @@
+{
+  "entities": {
+    "memberApplication": {
+      "title": "MemberApplication",
+      "description": "Represents a user's membership application to the consumer forum organization.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the applicant in Tamil or English."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Applicant's 10-digit mobile number, which serves as their unique identifier."
+        },
+        "age": {
+          "type": "integer",
+          "description": "Applicant's age."
+        },
+        "district": {
+          "type": "string",
+          "description": "The district the applicant belongs to."
+        },
+        "wingId": {
+          "type": "string",
+          "description": "ID of the specific wing selected by the applicant."
+        },
+        "constituency": {
+          "type": "string",
+          "description": "The political constituency of the applicant."
+        },
+        "union": {
+          "type": "string",
+          "description": "The taluk or union region of the applicant."
+        },
+        "photo": {
+          "type": "string",
+          "description": "Base64 or URL profile picture."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The registration date timestamp string."
+        },
+        "cardId": {
+          "type": "string",
+          "description": "Generated membership card serial ID."
+        },
+        "validUntil": {
+          "type": "string",
+          "description": "Expiration date display string."
+        },
+        "validUntilTimestamp": {
+          "type": "integer",
+          "description": "Milliseconds timestamp representating card expiration."
+        }
+      },
+      "required": ["name", "phone", "age", "district", "wingId", "constituency", "union"]
+    },
+    "officer": {
+      "title": "Officer",
+      "description": "Represents an organizing officer of the consumer forum.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique officer identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Officer's name in Tamil."
+        },
+        "name_en": {
+          "type": "string",
+          "description": "Officer's name in English."
+        },
+        "role": {
+          "type": "string",
+          "description": "Designation/Role in Tamil."
+        },
+        "role_en": {
+          "type": "string",
+          "description": "Designation/Role in English."
+        },
+        "district": {
+          "type": "string",
+          "description": "Assigned district/responsibility in Tamil."
+        },
+        "district_en": {
+          "type": "string",
+          "description": "Assigned district/responsibility in English."
+        },
+        "level": {
+          "type": "string",
+          "enum": ["state", "district", "branch", "wing"],
+          "description": "Administrative reach hierarchy."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact number (optional)."
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email (optional)."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Officer profile photo URL."
+        },
+        "wingId": {
+          "type": "string",
+          "description": "Associated wing ID if level is wing."
+        }
+      },
+      "required": ["id", "name", "name_en", "role", "role_en", "district", "district_en", "level"]
+    },
+    "historyItem": {
+      "title": "HistoryItem",
+      "description": "Tracks addition and deletion actions of organizational officers.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique record identifier."
+        },
+        "officer": {
+          "type": "object",
+          "description": "The state of the officer being logged."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["added", "removed"],
+          "description": "Action type logged."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO date-time or locale string representing when action took place."
+        },
+        "restored": {
+          "type": "boolean",
+          "description": "Whether the officer has been restored/undeleted."
+        }
+      },
+      "required": ["id", "officer", "type", "timestamp"]
+    },
+    "mediaItem": {
+      "title": "MediaItem",
+      "description": "Represents an uploaded media item (photo or video).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "title_en": { "type": "string" },
+        "type": { "type": "string", "enum": ["photo", "video"] },
+        "url": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "tag": { "type": "string" },
+        "tag_en": { "type": "string" }
+      },
+      "required": ["id", "title", "title_en", "type", "url", "tag", "tag_en"]
+    }
+  },
+  "firestore": {
+    "media/{mediaId}": {
+      "schema": {
+        "$ref": "#/entities/mediaItem"
+      },
+      "description": "Collection housing media items."
+    },
+    "memberships/{phone}": {
+      "schema": {
+        "$ref": "#/entities/memberApplication"
+      },
+      "description": "Collection housing public membership applications. The phone number serves as the document ID."
+    },
+    "officers/{officerId}": {
+      "schema": {
+        "$ref": "#/entities/officer"
+      },
+      "description": "Collection hosting organizing officers at various levels."
+    },
+    "officer_history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/historyItem"
+      },
+      "description": "Logs tracking administrative history changes (added/removed of officers)."
+    }
+  }
+}

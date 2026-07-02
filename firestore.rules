@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net: Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Safety Helpers / Primitives
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // 3. Entity-Specific Schema Validation Blueprints (The "Anti-Update-Gap")
+    function isValidMemberApplication(m) {
+      return m.name is string && m.name.size() > 0 && m.name.size() <= 100
+        && m.phone is string && m.phone.size() == 10 && m.phone.matches('^[0-9]+$')
+        && m.age is int && m.age >= 18 && m.age <= 120
+        && m.district is string && m.district.size() > 0 && m.district.size() <= 50
+        && m.wingId is string && m.wingId.size() > 0 && m.wingId.size() <= 50
+        && m.constituency is string && m.constituency.size() >= 0 && m.constituency.size() <= 100
+        && m.union is string && m.union.size() >= 0 && m.union.size() <= 100
+        && (!('photo' in m) || (m.photo == null || m.photo is string))
+        && (!('date' in m) || (m.date == null || m.date is string))
+        && (!('cardId' in m) || (m.cardId == null || m.cardId is string))
+        && (!('validUntil' in m) || (m.validUntil == null || m.validUntil is string))
+        && (!('validUntilTimestamp' in m) || (m.validUntilTimestamp == null || m.validUntilTimestamp is int))
+        && (!('dob' in m) || (m.dob == null || m.dob is string))
+        && (!('gender' in m) || (m.gender == null || m.gender is string))
+        && (!('education' in m) || (m.education == null || m.education is string))
+        && (!('bloodGroup' in m) || (m.bloodGroup == null || m.bloodGroup is string));
+    }
+
+    function isValidOfficer(o) {
+      return o.id is string && o.id.size() > 0 && o.id.size() <= 50
+        && o.name is string && o.name.size() > 0 && o.name.size() <= 100
+        && o.name_en is string && o.name_en.size() > 0 && o.name_en.size() <= 100
+        && o.role is string && o.role.size() > 0 && o.role.size() <= 150
+        && o.role_en is string && o.role_en.size() > 0 && o.role_en.size() <= 150
+        && o.district is string && o.district.size() > 0 && o.district.size() <= 50
+        && o.district_en is string && o.district_en.size() > 0 && o.district_en.size() <= 50
+        && o.level is string && (o.level == 'state' || o.level == 'district' || o.level == 'branch' || o.level == 'wing')
+        && (!('phone' in o) || (o.phone == null || o.phone is string))
+        && (!('email' in o) || (o.email == null || o.email is string))
+        && (!('imageUrl' in o) || (o.imageUrl == null || o.imageUrl is string))
+        && (!('wingId' in o) || (o.wingId == null || o.wingId is string));
+    }
+
+    function isValidHistoryItem(h) {
+      return h.id is string && h.id.size() > 0 && h.id.size() <= 50
+        && h.type is string && (h.type == 'added' || h.type == 'removed')
+        && h.timestamp is string
+        && (!('restored' in h) || h.restored is bool)
+        && h.officer is map && isValidOfficer(h.officer);
+    }
+
+    function isValidMediaItem(m) {
+      return m.id is string
+        && m.title is string
+        && m.title_en is string
+        && m.type is string && (m.type == 'photo' || m.type == 'video')
+        && m.url is string
+        && (!('thumbnailUrl' in m) || (m.thumbnailUrl == null || m.thumbnailUrl is string))
+        && m.tag is string
+        && m.tag_en is string;
+    }
+
+    // 4. Match Blocks for Collections
+    match /memberships/{phone} {
+      allow read: if true;
+      allow create: if phone == incoming().phone && isValidId(phone) && isValidMemberApplication(incoming());
+      // Updates can either be the entire record (by admin/owner) or a single wingId change action
+      allow update: if phone == incoming().phone && isValidId(phone) && phone == existing().phone && isValidMemberApplication(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['wingId']) ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'age', 'district', 'wingId', 'constituency', 'union', 'photo', 'date', 'cardId', 'validUntil', 'validUntilTimestamp', 'dob', 'gender', 'education', 'bloodGroup', 'address', 'memberId', 'email'])
+      );
+      allow delete: if true;
+    }
+
+    match /officers/{officerId} {
+      allow read: if true;
+      allow create, update: if officerId == incoming().id && isValidId(officerId) && isValidOfficer(incoming());
+      allow delete: if true;
+    }
+
+    match /officer_history/{historyId} {
+      allow read: if true;
+      allow create, update: if historyId == incoming().id && isValidId(historyId) && isValidHistoryItem(incoming());
+      allow delete: if true;
+    }
+
+    match /media/{mediaId} {
+      allow read: if true;
+      allow create, update: if mediaId == incoming().id && isValidId(mediaId) && isValidMediaItem(incoming());
+      allow delete: if true;
+    }
+  }
+}
